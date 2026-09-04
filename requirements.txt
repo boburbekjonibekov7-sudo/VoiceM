@@ -1,15 +1,12 @@
-# Telegram bot freymvorki
-aiogram>=3.15,<4.0
+# Vercel Python 3.12 serverless function uchun pinned dependencies.
+# CPU-only PyTorch ishlatiladi; CUDA paketlari ataylab qo'shilmagan.
+aiogram==3.15.0
+python-dotenv==1.0.1
+fastapi==0.115.6
 
-# .env fayldan sozlamalarni o'qish uchun
-python-dotenv>=1.0,<2.0
+audio-separator==0.30.2
+imageio-ffmpeg==0.6.0
 
-# Vercel Python Function / ASGI adapter
-fastapi>=0.115,<1.0
-
-# Ovoz/musiqa ajratish (UVR/MDX-Net/Demucs modellari asosida, faol qo'llab-quvvatlanadi)
-# GPU'siz (CPU) muhit uchun [cpu] extra ishlatiladi.
-audio-separator[cpu]>=0.30
-
-# Eslatma: ffmpeg dastur sifatida alohida o'rnatilishi kerak (pip orqali emas!).
-# O'rnatish yo'riqnomasi uchun README.md fayliga qarang.
+# PyPI'dagi CUDA build o'rniga CPU-only wheel.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu

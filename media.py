@@ -12,6 +12,11 @@ import asyncio
 import logging
 from pathlib import Path
 
+try:
+    from imageio_ffmpeg import get_ffmpeg_exe
+except ImportError:  # Lokal system ffmpeg bilan ishlashni saqlab qolamiz.
+    get_ffmpeg_exe = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,8 +26,9 @@ class MediaError(RuntimeError):
 
 async def _run_ffmpeg(args: list[str], timeout: float = 600.0) -> None:
     """ffmpeg buyrug'ini asinxron tarzda ishga tushiradi va xatolarni tekshiradi."""
+    ffmpeg_binary = get_ffmpeg_exe() if get_ffmpeg_exe else "ffmpeg"
     process = await asyncio.create_subprocess_exec(
-        "ffmpeg",
+        ffmpeg_binary,
         "-y",  # mavjud faylni so'ramasdan almashtirish
         "-hide_banner",
         "-loglevel",

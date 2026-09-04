@@ -40,7 +40,7 @@ Webhook holatini tekshirish:
 curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ```
 
-Vercel Function serverless va vaqtinchalik filesystem’dan foydalanadi. Shu sababli `/tmp` faqat bitta invocation davomida kafolatlanadi; model cache’i cold start’dan keyin qayta yuklanishi mumkin. Audio separation CPU va `ffmpeg` talab qilgani uchun katta yoki uzoq audio fayllar Vercel Hobby duration limitiga yetishi mumkin. Yuqori hajmli production ishlatish uchun separation worker’ini alohida doimiy serverga ajratish ma’qul.
+Vercel Function serverless va vaqtinchalik filesystem’dan foydalanadi. Shu sababli `/tmp` faqat bitta invocation davomida kafolatlanadi; model cache’i cold start’dan keyin qayta yuklanishi mumkin. Dependency’lar CUDA emas, CPU-only PyTorch build bilan pinned qilingan; `imageio-ffmpeg` esa Vercel’da system binary o‘rnatmasdan ffmpeg executable’ini beradi. Audio separation CPU talab qilgani uchun katta yoki uzoq audio fayllar Vercel Hobby duration limitiga yetishi mumkin. Yuqori hajmli production ishlatish uchun separation worker’ini alohida doimiy serverga ajratish ma’qul.
 
 ## O‘rnatish (Windows, CMD)
 
@@ -62,7 +62,7 @@ venv\Scripts\activate
 
 ### 3. ffmpeg o‘rnating
 
-`ffmpeg` pip orqali emas, alohida dastur sifatida o‘rnatiladi. [Windows build](https://www.gyan.dev/ffmpeg/builds/) arxivini o‘rnating, `bin` papkasini PATH’ga qo‘shing va tekshiring:
+Windows lokal rejimida `ffmpeg` o‘rnatish uchun [Windows build](https://www.gyan.dev/ffmpeg/builds/) arxivini o‘rnating, `bin` papkasini PATH’ga qo‘shing va tekshiring. Vercel deploy’da esa `imageio-ffmpeg` package ichidagi binary avtomatik ishlatiladi:
 
 ```cmd
 ffmpeg -version
@@ -93,7 +93,7 @@ python bot.py
 
 - **Fayl hajmi:** standart Telegram Bot API odatda taxminan 20 MB gacha bo‘lgan fayllarni yuklab olishga imkon beradi.
 - **Vaqt:** ajratish jarayoni CPU’da ishlaydi va uzun audio/video bir necha daqiqa davom etishi mumkin.
-- **Vercel:** serverless invocation’lar vaqtinchalik fayl tizimiga ega; model cache’i doimiy saqlanmasligi mumkin. Uzoq davom etadigan separation vazifalari Vercel Function timeout’iga yetishi ehtimoli bor.
+- **Vercel:** serverless invocation’lar vaqtinchalik fayl tizimiga ega; model cache’i doimiy saqlanmasligi mumkin. CPU-only bundle kichraytirilgan bo‘lsa ham, uzoq davom etadigan separation vazifalari Function timeout’iga yetishi ehtimoli bor.
 
 ## Loyihaviy tuzilma
 
