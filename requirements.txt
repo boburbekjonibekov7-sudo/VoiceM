@@ -1,0 +1,12 @@
+# Telegram bot freymvorki
+aiogram>=3.15,<4.0
+
+# .env fayldan sozlamalarni o'qish uchun
+python-dotenv>=1.0,<2.0
+
+# Ovoz/musiqa ajratish (UVR/MDX-Net/Demucs modellari asosida, faol qo'llab-quvvatlanadi)
+# GPU'siz (CPU) muhit uchun [cpu] extra ishlatiladi.
+audio-separator[cpu]>=0.30
+
+# Eslatma: ffmpeg dastur sifatida alohida o'rnatilishi kerak (pip orqali emas!).
+# O'rnatish yo'riqnomasi uchun README.md fayliga qarang.
