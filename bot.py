@@ -1,12 +1,6 @@
-"""
-Telegram bot: audio yoki video fayl yuborilsa, undan ovozni (vocals)
-va musiqani (instrumental / "minus") alohida-alohida ajratib beradi.
+"""Telegram vocal-separation bot.
 
-Ishga tushirish:
-    python bot.py
-
-Talablar: .env faylida BOT_TOKEN ko'rsatilgan bo'lishi kerak
-(qarang: .env.example va README.md).
+The same handlers can run in local polling mode or behind a Vercel webhook.
 """
 from __future__ import annotations
 
@@ -15,6 +9,7 @@ import logging
 import shutil
 import uuid
 from pathlib import Path
+from typing import Any
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
@@ -23,7 +18,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandStart
 from aiogram.types import FSInputFile, Message
 
-from config import ConfigError, load_settings
+from config import ConfigError, Settings, load_settings
 from media import MediaError, convert_to_mp3, extract_audio_to_wav
 from separation import SeparationError, VocalSeparator
 
@@ -50,19 +45,13 @@ UNSUPPORTED_TEXT = (
 )
 
 
-async def main() -> None:
-    try:
-        settings = load_settings()
-    except ConfigError as exc:
-        logger.error(str(exc))
-        raise SystemExit(1) from exc
-
+def build_application(settings: Settings) -> tuple[Bot, Dispatcher]:
+    """Create the bot and register handlers for polling or webhook execution."""
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
-
     separator = VocalSeparator(
         model_file_dir=settings.work_dir / "_models",
         model_filename=settings.model_filename,
@@ -93,21 +82,17 @@ async def main() -> None:
     async def handle_other(message: Message) -> None:
         await message.answer(UNSUPPORTED_TEXT)
 
-    logger.info("Bot ishga tushdi.")
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    return bot, dp
 
 
 async def process_media_message(
     message: Message,
     bot: Bot,
     separator: VocalSeparator,
-    settings,
+    settings: Settings,
     job_semaphore: asyncio.Semaphore,
 ) -> None:
-    """Kelgan audio/video xabarni to'liq qayta ishlab, natijalarni foydalanuvchiga qaytaradi."""
+    """Process an incoming audio/video message and send both stems back."""
     media = message.audio or message.voice or message.video or message.video_note or message.document
     if media is None:
         await message.answer(UNSUPPORTED_TEXT)
@@ -123,7 +108,6 @@ async def process_media_message(
         return
 
     status_msg = await message.answer("📥 Fayl qabul qilindi, navbatga qo'yildi...")
-
     job_id = uuid.uuid4().hex[:12]
     job_dir = settings.work_dir / job_id
 
@@ -131,7 +115,6 @@ async def process_media_message(
         try:
             await status_msg.edit_text("⬇️ Fayl yuklab olinmoqda...")
             job_dir.mkdir(parents=True, exist_ok=True)
-
             source_path = job_dir / "source_input"
             file_info = await bot.get_file(media.file_id)
             await bot.download_file(file_info.file_path, destination=source_path)
@@ -153,16 +136,12 @@ async def process_media_message(
             await convert_to_mp3(stems["vocals"], vocals_mp3)
             await convert_to_mp3(stems["instrumental"], instrumental_mp3)
 
-            await message.answer_audio(
-                FSInputFile(vocals_mp3, filename="vocals.mp3"),
-                caption="🎤 Ovoz (vocals)",
-            )
+            await message.answer_audio(FSInputFile(vocals_mp3, filename="vocals.mp3"), caption="🎤 Ovoz (vocals)")
             await message.answer_audio(
                 FSInputFile(instrumental_mp3, filename="minus.mp3"),
                 caption="🎹 Musiqa / minus (instrumental)",
             )
             await status_msg.edit_text("✅ Tayyor!")
-
         except MediaError as exc:
             logger.warning("MediaError (job=%s): %s", job_id, exc)
             await status_msg.edit_text(f"❌ Faylni o'qishda xatolik: {exc}")
@@ -171,17 +150,27 @@ async def process_media_message(
             await status_msg.edit_text(f"❌ Ajratishda xatolik: {exc}")
         except TelegramAPIError as exc:
             logger.warning("TelegramAPIError (job=%s): %s", job_id, exc)
-            await message.answer(
-                "❌ Telegramga faylni yuborishda xatolik yuz berdi "
-                "(ehtimol fayl hajmi juda katta)."
-            )
-        except Exception:  # kutilmagan har qanday xato uchun oxirgi himoya qatlami
+            await message.answer("❌ Telegramga faylni yuborishda xatolik yuz berdi (ehtimol fayl hajmi juda katta).")
+        except Exception:
             logger.exception("Kutilmagan xato (job=%s)", job_id)
-            await status_msg.edit_text(
-                "❌ Kutilmagan xatolik yuz berdi. Iltimos, birozdan so'ng qayta urinib ko'ring."
-            )
+            await status_msg.edit_text("❌ Kutilmagan xatolik yuz berdi. Iltimos, birozdan so'ng qayta urinib ko'ring.")
         finally:
             shutil.rmtree(job_dir, ignore_errors=True)
+
+
+async def main() -> None:
+    try:
+        settings = load_settings()
+    except ConfigError as exc:
+        logger.error(str(exc))
+        raise SystemExit(1) from exc
+
+    bot, dp = build_application(settings)
+    logger.info("Bot polling rejimida ishga tushdi.")
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 
 if __name__ == "__main__":
