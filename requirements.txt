@@ -1,5 +1,5 @@
 # Vercel Python 3.12 serverless function uchun pinned dependencies.
-# CPU-only PyTorch ishlatiladi; CUDA paketlari ataylab qo'shilmagan.
+# CUDA paketlari ataylab qo'shilmagan.
 aiogram==3.15.0
 python-dotenv==1.0.1
 fastapi==0.115.6
@@ -7,6 +7,5 @@ fastapi==0.115.6
 audio-separator==0.30.2
 imageio-ffmpeg==0.6.0
 
-# PyPI'dagi CUDA build o'rniga CPU-only wheel.
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.3.1+cpu
+# PyPI'dagi CUDA build o'rniga Python 3.12 Linux CPU-only wheel.
+torch @ https://download.pytorch.org/whl/cpu/torch-2.3.1%2Bcpu-cp312-cp312-linux_x86_64.whl
