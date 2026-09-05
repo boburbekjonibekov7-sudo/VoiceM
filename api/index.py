@@ -28,7 +28,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "VoiceM Telegram webhook"}
 
 
-@app.post("/api/webhook")
+@app.post("/webhook")
 async def telegram_webhook(
     request: Request,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),

@@ -1,36 +1,26 @@
-# Ovoz/Musiqa Ajratuvchi Telegram Bot
+# VoiceM — Telegram vocal separation bot
 
-Audio yoki video fayl yuborilganda, undan **ovoz (vocals)** va **musiqa/minus (instrumental)** qismlarini alohida-alohida ajratib beruvchi Telegram bot.
+VoiceM Telegram boti audio yoki video fayldan **vocals** va **instrumental/minus** qismlarini ajratib, ikkala natijani alohida MP3 ko‘rinishida qaytaradi. Asosiy bot kodi yangi `vocal_bot.zip` arxividan olindi; Vercel webhook ishlashi uchun serverless adapter saqlandi.
 
-## Qanday ishlaydi
+## Vercel webhook deploy
 
-1. Foydalanuvchi audio, ovozli xabar, audio fayl, video yoki video fayl yuboradi.
-2. Bot faylni yuklab oladi.
-3. `ffmpeg` yordamida undan toza WAV audio ajratib olinadi.
-4. `audio-separator` kutubxonasi ovoz va musiqani ajratadi.
-5. Ikkala natija MP3 formatga o‘girilib, foydalanuvchiga qaytariladi.
+Repository Vercel Python Function sifatida sozlangan. FastAPI endpoint health tekshiruvi uchun `GET /`, Telegram update’lari uchun esa `POST /webhook` yo‘lidan foydalanadi. Vercel project environment variables ichida quyidagilar bo‘lishi kerak:
 
-## Vercel webhook rejimida deploy qilish
-
-Loyiha Vercel Python Function sifatida tayyorlangan. Telegram update’lari `POST /api/webhook` endpoint’iga keladi; lokal ishga tushirish uchun esa `python bot.py` polling rejimi saqlab qolingan.
-
-Vercel project’ini ushbu repository bilan ulang va quyidagi Environment Variables’ni Production, Preview va Development muhitlariga kiriting:
-
-| O‘zgaruvchi | Qiymat |
+| O‘zgaruvchi | Tavsiya etilgan qiymat |
 |---|---|
-| `BOT_TOKEN` | @BotFather bergan haqiqiy bot tokeni |
-| `WEBHOOK_SECRET` | Uzun, tasodifiy secret; webhook requestlarini tekshiradi |
-| `MAX_DOWNLOAD_MB` | Odatda `20` |
-| `MAX_CONCURRENT_JOBS` | Vercel uchun `1` tavsiya etiladi |
-| `WORK_DIR` | Vercel’da `/tmp/vocal_bot` bo‘lishi kerak |
+| `BOT_TOKEN` | BotFather bergan token |
+| `WEBHOOK_SECRET` | Tasodifiy maxfiy satr |
+| `MAX_DOWNLOAD_MB` | `20` |
+| `MAX_CONCURRENT_JOBS` | `1` |
+| `WORK_DIR` | `/tmp/vocal_bot` |
 | `MODEL_FILENAME` | Ixtiyoriy model nomi |
 
-Deploy tugagach, Vercel URL’ingizni `https://your-project.vercel.app` o‘rniga qo‘yib webhook’ni bir marta o‘rnating:
+Deploy’dan keyin webhook’ni bir marta o‘rnating:
 
 ```bash
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \\
-  -d "url=https://your-project.vercel.app/api/webhook" \\
-  -d "secret_token=${WEBHOOK_SECRET}" \\
+curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
+  -d "url=https://your-project.vercel.app/webhook" \
+  -d "secret_token=${WEBHOOK_SECRET}" \
   -d 'allowed_updates=["message"]'
 ```
 
@@ -40,72 +30,34 @@ Webhook holatini tekshirish:
 curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ```
 
-Vercel Function serverless va vaqtinchalik filesystem’dan foydalanadi. Shu sababli `/tmp` faqat bitta invocation davomida kafolatlanadi; model cache’i cold start’dan keyin qayta yuklanishi mumkin. Dependency’lar CUDA emas, CPU-only PyTorch build bilan pinned qilingan; `imageio-ffmpeg` esa Vercel’da system binary o‘rnatmasdan ffmpeg executable’ini beradi. Audio separation CPU talab qilgani uchun katta yoki uzoq audio fayllar Vercel Hobby duration limitiga yetishi mumkin. Yuqori hajmli production ishlatish uchun separation worker’ini alohida doimiy serverga ajratish ma’qul.
+`requirements.txt` Vercel bundle hajmini kamaytirish uchun CPU-only PyTorch wheel’dan foydalanadi. `imageio-ffmpeg` Vercel’da system ffmpeg o‘rnatilmagan holatda ham audio konvertatsiyasini bajaradi. Model yuklanishi va separation CPU’da ishlashi sababli birinchi so‘rov cold start’da uzoqroq davom etishi mumkin; katta production yuklamasi uchun alohida worker server ma’qul.
 
-## O‘rnatish (Windows, CMD)
+## Lokal ishga tushirish
 
-### 1. Python 3.12 o‘rnatilganini tekshiring
+Windows yoki Linux’da Python 3.12 o‘rnating, `.env.example` faylidan `.env` yarating va `BOT_TOKEN` qiymatini kiriting. Lokal muhitda system `ffmpeg` PATH’da bo‘lishi yoki `imageio-ffmpeg` package binary’si ishlatilishi mumkin.
 
-```cmd
-py -3.12 --version
-```
-
-Agar bo‘lmasa, [Python](https://www.python.org/downloads/) ni o‘rnating va `Add python.exe to PATH` belgisini yoqing.
-
-### 2. Loyihani tayyorlang va virtual muhit yarating
-
-```cmd
-cd vocal_bot
-py -3.12 -m venv venv
-venv\Scripts\activate
-```
-
-### 3. ffmpeg o‘rnating
-
-Windows lokal rejimida `ffmpeg` o‘rnatish uchun [Windows build](https://www.gyan.dev/ffmpeg/builds/) arxivini o‘rnating, `bin` papkasini PATH’ga qo‘shing va tekshiring. Vercel deploy’da esa `imageio-ffmpeg` package ichidagi binary avtomatik ishlatiladi:
-
-```cmd
-ffmpeg -version
-```
-
-### 4. Python kutubxonalarini o‘rnating
-
-```cmd
+```bash
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows CMD
+.venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-### 5. `.env` faylini sozlang
-
-```cmd
-copy .env.example .env
-notepad .env
-```
-
-`.env` ichida `BOT_TOKEN` qatoriga @BotFather’dan olgan tokeningizni yozing.
-
-### 6. Botni ishga tushiring
-
-```cmd
 python bot.py
 ```
 
-## Muhim cheklovlar
+Lokal `python bot.py` polling rejimida ishlaydi. Vercel’da esa `api/index.py` serverless endpointi aiogram dispatcher’iga Telegram update’larini uzatadi.
 
-- **Fayl hajmi:** standart Telegram Bot API odatda taxminan 20 MB gacha bo‘lgan fayllarni yuklab olishga imkon beradi.
-- **Vaqt:** ajratish jarayoni CPU’da ishlaydi va uzun audio/video bir necha daqiqa davom etishi mumkin.
-- **Vercel:** serverless invocation’lar vaqtinchalik fayl tizimiga ega; model cache’i doimiy saqlanmasligi mumkin. CPU-only bundle kichraytirilgan bo‘lsa ham, uzoq davom etadigan separation vazifalari Function timeout’iga yetishi ehtimoli bor.
-
-## Loyihaviy tuzilma
+## Tuzilma
 
 ```text
-vocal_bot/
-├── api/index.py          # Vercel webhook serverless endpointi
-├── vercel.json           # Vercel function va route sozlamalari
-├── bot.py                # aiogram bot va umumiy handlerlar
-├── separation.py         # audio-separator xizmat qatlami
-├── media.py              # ffmpeg orqali audio konvertatsiyasi
-├── config.py             # environment sozlamalari
-├── requirements.txt
-├── .env.example
-└── tmp_jobs/             # lokal ishlash vaqtida yaratiladigan katalog
+api/index.py      # Vercel FastAPI webhook endpointi
+bot.py            # aiogram handlerlari va polling rejimi
+config.py         # environment sozlamalari
+media.py          # ffmpeg audio konvertatsiyasi
+separation.py     # audio-separator modeli
+vercel.json       # Vercel Function sozlamalari
+requirements.txt  # pinned CPU-only dependencies
 ```
+
+Maxfiy `.env`, tokenlar va model cache’lari repository’ga qo‘shilmasligi kerak.
